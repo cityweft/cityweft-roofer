@@ -113,7 +113,7 @@ struct BuildingObject {
   // set in crop
   fs::path jsonl_path;
   std::optional<float> h_ground;  // without offset
-  float h_pc_98p;                 // without offset
+  std::optional<float> h_pc_98p;  // without offset
   float h_pc_roof_70p;            // with offset!
   bool force_lod11;               // force_lod11 / fallback_lod11
   bool pointcloud_insufficient;
@@ -263,6 +263,35 @@ struct fmt::formatter<BuildingTile> {
 
 #include "crop_tile.hpp"
 #include "reconstruct_building.hpp"
+
+/**
+ * @brief Give a building whose reconstruction threw an LoD 1.1 block model.
+ *
+ * Exceptions after plane detection (arrangement building, snapping,
+ * extrusion) used to leave the building without any geometry. A block at the
+ * 70th percentile roof elevation is the same fallback that a failed plane
+ * detection already gets, and far more useful downstream than a hole in the
+ * model. The building keeps `success = false`; `extrusion_mode` reports
+ * `lod11_fallback`, or `fail` when even the block could not be built.
+ */
+void fallback_after_failure(BuildingObject& building, RooferConfig* cfg) {
+  building.multisolids_lod12.clear();
+  building.multisolids_lod13.clear();
+  building.multisolids_lod22.clear();
+  building.extrusion_mode = FAIL;
+  if (!building.h_ground.has_value() || building.pointcloud_building.empty() ||
+      !(building.h_pc_roof_70p > *building.h_ground)) {
+    return;
+  }
+  try {
+    extrude_lod11(building, building.h_pc_roof_70p, cfg);
+  } catch (...) {
+    building.multisolids_lod12.clear();
+    building.multisolids_lod13.clear();
+    building.multisolids_lod22.clear();
+    building.extrusion_mode = FAIL;
+  }
+}
 
 void get_las_extents(InputPointcloud& ipc,
                      roofer::io::SpatialReferenceSystemInterface* srs) {
@@ -708,27 +737,28 @@ int main(int argc, const char* argv[]) {
                           std::chrono::high_resolution_clock::now() - start)
                           .count());
             } catch (const std::exception& e) {
-              building_object_ref.building.multisolids_lod12.clear();
-              building_object_ref.building.multisolids_lod13.clear();
-              building_object_ref.building.multisolids_lod22.clear();
+              fallback_after_failure(building_object_ref.building, cfg);
               building_object_ref.progress = RECONSTRUCTION_FAILED;
-              building_object_ref.building.extrusion_mode = FAIL;
               auto& logger = roofer::logger::Logger::get_logger();
               logger.warning(
-                  "[reconstructor] reconstruction failed for: {}. Exception: "
-                  "{}",
-                  building_object_ref.building.jsonl_path.string(), e.what());
+                  "[reconstructor] reconstruction failed for: {} ({}). "
+                  "Exception: {}",
+                  building_object_ref.building.jsonl_path.string(),
+                  building_object_ref.building.extrusion_mode == FAIL
+                      ? "no geometry"
+                      : "LoD1.1 fallback",
+                  e.what());
             } catch (...) {
-              building_object_ref.building.multisolids_lod12.clear();
-              building_object_ref.building.multisolids_lod13.clear();
-              building_object_ref.building.multisolids_lod22.clear();
+              fallback_after_failure(building_object_ref.building, cfg);
               building_object_ref.progress = RECONSTRUCTION_FAILED;
-              building_object_ref.building.extrusion_mode = FAIL;
               auto& logger = roofer::logger::Logger::get_logger();
               logger.warning(
-                  "[reconstructor] reconstruction failed for: {}. Unknown "
+                  "[reconstructor] reconstruction failed for: {} ({}). Unknown "
                   "exception.",
-                  building_object_ref.building.jsonl_path.string());
+                  building_object_ref.building.jsonl_path.string(),
+                  building_object_ref.building.extrusion_mode == FAIL
+                      ? "no geometry"
+                      : "LoD1.1 fallback");
             }
             size_t processed_count = 0;
             {
@@ -983,7 +1013,8 @@ int main(int argc, const char* argv[]) {
                 attrow.insert_optional(handler.cfg_.a_h_ground,
                                        building.h_ground);
               if (!handler.cfg_.a_h_pc_98p.empty())
-                attrow.insert(handler.cfg_.a_h_pc_98p, building.h_pc_98p);
+                attrow.insert_optional(handler.cfg_.a_h_pc_98p,
+                                       building.h_pc_98p);
               if (!handler.cfg_.a_is_glass_roof.empty())
                 attrow.insert(handler.cfg_.a_is_glass_roof,
                               building.is_glass_roof);

@@ -1,4 +1,5 @@
 #include <array>
+#include <cmath>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -89,4 +90,35 @@ TEST_CASE("terrain clipping marks an enclosed subface as a footprint hole") {
     }
   }
   CHECK(enclosed_ground_faces == 1);
+}
+
+TEST_CASE("a face without measured cells takes the height of its plane") {
+  // The LoD 1.2/1.3 extrusion uses elevation_70p / elevation_97p as the face
+  // height. A face whose cells carry no heightfield data used to be given the
+  // raster nodata sentinel (-FLT_MAX) and was extruded far below ground.
+  auto arrangement = square_arrangement();
+  for (auto face : arrangement.face_handles()) {
+    if (!face->is_unbounded()) face->data().plane = roofer::Plane(0, 0, 1, -7);
+  }
+
+  auto elevation_provider =
+      roofer::reconstruction::createElevationProvider(0.0F);
+  auto dissolver = roofer::reconstruction::createArrangementDissolver();
+  roofer::RasterTools::Raster heightfield(1, -1, 11, -1, 11);
+  heightfield.prefill_arrays(roofer::RasterTools::MAX);
+  dissolver->compute(
+      arrangement, heightfield, *elevation_provider,
+      {.dissolve_segment_edges = false, .dissolve_outside_footprint = false});
+
+  size_t roof_faces = 0;
+  for (auto face : arrangement.face_handles()) {
+    if (face->is_unbounded() || !face->data().in_footprint) continue;
+    ++roof_faces;
+    CHECK(face->data().pixel_count == 0);
+    CHECK(face->data().data_coverage == 0.0F);
+    CHECK(std::abs(face->data().elevation_70p - 7.0F) < 1e-3F);
+    CHECK(std::abs(face->data().elevation_97p - 7.0F) < 1e-3F);
+    CHECK(std::abs(face->data().elevation_50p - 7.0F) < 1e-3F);
+  }
+  CHECK(roof_faces == 1);
 }

@@ -60,3 +60,10 @@ flattened real roofs whose points had formed no plane (Marseille top MAE 1.571 â
 the point-based ceiling. Upstream's wippolder test set is unchanged by the penalty. PR #181 and
 the other fixes do not change these numbers; they fix determinism, crashes and the LoD 1.x
 sentinel floors.
+
+Note on platforms: the released `v1.1.0-beta.1` binary (x86_64, GitHub Actions) and the same tag
+built on arm64 in Docker give different raw results on Marseille (145 vs 188 ramps, 39 vs 14
+glass-roof LoD 1.1 blocks, top MAE 1.60 vs 1.57 m) although each binary is deterministic run to
+run (0 of 8,957 buildings differ between two runs). Floating-point differences between the
+platforms feed the region growing; compare builds on one platform only. The production binary is
+the x86_64 release build, like the beta the ingest image uses today.

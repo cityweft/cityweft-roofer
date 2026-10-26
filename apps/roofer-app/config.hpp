@@ -364,6 +364,10 @@ struct LegacyReconstructionDestination {
     "nodata-ceiling-margin", false, false, true, FIELD, "",                    \
     cfg_.reconstruction.arrangement_optimiser, Optimiser,                      \
     nodata_ceiling_margin)                                                     \
+  X("nodata-ceiling-percentile", "reconstruction.arrangement-optimiser",       \
+    "nodata-ceiling-percentile", false, false, true, FIELD, "",                \
+    cfg_.reconstruction.arrangement_optimiser, Optimiser,                      \
+    nodata_ceiling_percentile)                                                 \
   X("lod13-step-height", "reconstruction", "lod13-step-height", true, false,   \
     true, FIELD, "", cfg_.reconstruction, Reconstruction, lod13_step_height)   \
   X("plane-detect-k", "reconstruction.plane-detector",                         \

@@ -248,13 +248,24 @@ namespace roofer::reconstruction {
       const bool use_ceiling = cfg.nodata_ceiling_weight > 0;
       double ceiling = -std::numeric_limits<double>::infinity();
       if (use_ceiling) {
+        // A percentile of the measured cells rather than the maximum, so
+        // that a chimney or lift housing (a small but legitimate plane) does
+        // not lift the ceiling for the whole roof.
+        std::vector<float> measured;
         for (size_t col = 0; col < heightfield.dimx_; ++col) {
           for (size_t row = 0; row < heightfield.dimy_; ++row) {
             const auto p = heightfield.getPointFromRasterCoords(col, row);
-            if (p[2] != nodata) ceiling = std::max(ceiling, double(p[2]));
+            if (p[2] != nodata) measured.push_back(p[2]);
           }
         }
-        ceiling += cfg.nodata_ceiling_margin;
+        if (!measured.empty()) {
+          const double q = std::clamp(double(cfg.nodata_ceiling_percentile),
+                                      0.0, 1.0);
+          const auto n = size_t(std::floor(q * double(measured.size() - 1)));
+          std::nth_element(measured.begin(), measured.begin() + n,
+                           measured.end());
+          ceiling = double(measured[n]) + cfg.nodata_ceiling_margin;
+        }
       }
 
       // compute vertex_label_cost (data term)

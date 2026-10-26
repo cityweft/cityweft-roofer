@@ -49,10 +49,15 @@ namespace roofer::reconstruction {
     "roof-partition cells without point data (0 disables).",              \
     config::at_least(0.0F), public_)                                      \
   X(float, nodata_ceiling_margin, 1.0F,                                   \
-    "Height above the highest measured roof elevation that a plane may "  \
-    "reach over cells without point data before the ceiling penalty "     \
-    "applies, in metres.",                                                \
-    config::at_least(0.0F), public_)
+    "Height above the measured roof ceiling that a plane may reach over " \
+    "cells without point data before the ceiling penalty applies, in "    \
+    "metres.",                                                            \
+    config::at_least(0.0F), public_)                                      \
+  X(float, nodata_ceiling_percentile, 0.98F,                              \
+    "Percentile of the measured heightfield cells that defines the roof " \
+    "ceiling for the nodata penalty. 1 is the highest cell; a lower "     \
+    "value ignores small high planes such as chimneys.",                  \
+    config::in_range(0.0F, 1.0F), public_)
   struct ArrangementOptimiserConfig {
     using Self = ArrangementOptimiserConfig;
     ROOFER_CONFIG_MEMBERS(ROOFER_ARRANGEMENT_OPTIMISER_FIELDS)

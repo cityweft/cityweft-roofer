@@ -19,6 +19,9 @@
 // Author(s):
 // Ravi Peters
 #pragma once
+#include <algorithm>
+#include <cmath>
+#include <vector>
 #ifdef RF_USE_RERUN
 // Adapters so we can log eigen vectors as rerun positions:
 template <>
@@ -523,6 +526,20 @@ void reconstruct_building(BuildingObject& building, RooferConfig* cfg) {
     auto optimiser_config = reconstruction.arrangement_optimiser;
     optimiser_config.use_ground =
         !building.pointcloud_ground.empty() && reconstruction.clip_terrain;
+    // The roof ceiling for the nodata penalty: a high percentile of the
+    // building's own points, so that parts whose points formed no plane
+    // still count as measured.
+    if (optimiser_config.nodata_ceiling_weight > 0 &&
+        !building.pointcloud_building.empty()) {
+      std::vector<float> z;
+      z.reserve(building.pointcloud_building.size());
+      for (const auto& p : building.pointcloud_building) z.push_back(p[2]);
+      const auto q = std::clamp(optimiser_config.nodata_ceiling_percentile,
+                                0.0F, 1.0F);
+      const auto n = size_t(std::floor(q * float(z.size() - 1)));
+      std::nth_element(z.begin(), z.begin() + n, z.end());
+      optimiser_config.roof_ceiling = z[n];
+    }
     ArrangementOptimiser->compute(arrangement, SegmentRasteriser->heightfield,
                                   PlaneDetector->pts_per_roofplane,
                                   PlaneDetector_ground->pts_per_roofplane,

@@ -24,6 +24,7 @@
 #include <roofer/common/Raster.hpp>
 #include <roofer/common/datastructures.hpp>
 #include <roofer/reconstruction/cgal_shared_definitions.hpp>
+#include <limits>
 #include <roofer/common/ConfigField.hpp>
 
 namespace roofer::reconstruction {
@@ -57,7 +58,12 @@ namespace roofer::reconstruction {
     "Percentile of the measured heightfield cells that defines the roof " \
     "ceiling for the nodata penalty. 1 is the highest cell; a lower "     \
     "value ignores small high planes such as chimneys.",                  \
-    config::in_range(0.0F, 1.0F), public_)
+    config::in_range(0.0F, 1.0F), public_)                                \
+  X(float, roof_ceiling, std::numeric_limits<float>::quiet_NaN(),         \
+    "Measured roof ceiling in input units, the nodata-ceiling-percentile " \
+    "of the building's point elevations (pipeline-derived; NaN derives "  \
+    "it from the heightfield instead).",                                  \
+    config::no_validation<float>(), internal)
   struct ArrangementOptimiserConfig {
     using Self = ArrangementOptimiserConfig;
     ROOFER_CONFIG_MEMBERS(ROOFER_ARRANGEMENT_OPTIMISER_FIELDS)

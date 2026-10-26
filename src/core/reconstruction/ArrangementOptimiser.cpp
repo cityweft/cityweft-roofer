@@ -247,7 +247,13 @@ namespace roofer::reconstruction {
       const double nodata = heightfield.noDataVal_;
       const bool use_ceiling = cfg.nodata_ceiling_weight > 0;
       double ceiling = -std::numeric_limits<double>::infinity();
-      if (use_ceiling) {
+      if (use_ceiling && std::isfinite(cfg.roof_ceiling)) {
+        // The pipeline measured the ceiling on the building's points. That
+        // is the better reference: a tall part whose points did not form a
+        // plane has no heightfield cells, but its points still raise the
+        // ceiling, so the penalty does not flatten it.
+        ceiling = double(cfg.roof_ceiling) + cfg.nodata_ceiling_margin;
+      } else if (use_ceiling) {
         // A percentile of the measured cells rather than the maximum, so
         // that a chimney or lift housing (a small but legitimate plane) does
         // not lift the ceiling for the whole roof.

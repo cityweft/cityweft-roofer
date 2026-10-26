@@ -28,6 +28,11 @@ git tag v1.1.0-cw.1 && git push origin cityweft --tags
 The ingest image (`3d-data-processing/docker/userdata.Dockerfile`) downloads
 `https://github.com/cityweft/cityweft-roofer/releases/download/<tag>/roofer-linux-x86_64-<tag>.tar.gz`.
 
+GitHub disables Actions on a fresh fork until they are enabled once in the fork's Actions tab; a
+tag pushed before that does not build (delete and re-push the tag afterwards). The upstream
+Docker Hub push and documentation workflows are removed on this branch: they need upstream's
+secrets and pages. `conan-build.yml` is the reusable build and stays.
+
 ## Local build
 
 Upstream's recipe (Conan 2 + CMake, see `README.md` and `docker/Dockerfile`). The Docker build is

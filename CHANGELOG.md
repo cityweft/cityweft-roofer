@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0-cw.1] - 2026-10-26
+
+Cityweft fork of roofer (https://github.com/cityweft/roofer): upstream `main` at 8fbbaaa (v1.1.0-beta.1 plus the two ArrangementSnapper fixes) with the changes below. Everything here is intended to be proposed upstream.
+
+### Added
+- Graph-cut data term for roof-partition cells without point data. A roof plane extrapolated above the highest measured roof elevation over such cells is now penalised (`[reconstruction.arrangement-optimiser] nodata-ceiling-weight`, default 1, and `nodata-ceiling-margin`, default 1 m; CLI `--nodata-ceiling-weight`, `--nodata-ceiling-margin`). Previously those cells cost nothing under every label, the smoothness term alone decided the label, and the plane of the scanned roof half was extrapolated across the unscanned half: the "ramp" roof of 3DBAG/roofer#172. Set the weight to 0 for the old behaviour.
+- `--glass-roof-threshold` (crop option, default 0.75 as before). The glass-roof test forces an LoD 1.1 block for buildings whose cells mix ground and building returns; it now has a parameter, and 0 disables it.
+- A building whose reconstruction throws after plane detection (arrangement, snapping, extrusion) now gets the LoD 1.1 block fallback that a failed plane detection already had, instead of no geometry at all. It keeps `success = false`; `extrusion_mode` is `lod11_fallback`, or `fail` when even the block could not be built.
+
+### Fixed
+- Roof-partition faces without any measured heightfield cell were given the raster nodata sentinel (-FLT_MAX) as their elevation percentiles. The LoD 1.2/1.3 extrusion uses those percentiles as face heights, which produced walls and floors tens of metres below ground. Such faces now take the height of their assigned roof plane, as the LoD 2.2 extrusion already does.
+- `h_pc_98p` was an uninitialised float and was written as an attribute even when `--compute-pc-98p` was off or the building had no points. It is now optional and omitted in those cases.
+- An exception in the nodata-circle computation of one footprint terminated the whole process with `exit(1)`; it is now logged and the radius set to 0, as the surrounding code intended.
+- The per-cell mean and variance of the crop-phase point cloud raster were accumulated in integers.
+- Merged 3DBAG/roofer#181 (determinism: seeded region-growing shuffle, address-independent container orders, uninitialised loop index in the cropper's buffer-ground merge, off-by-one in grid thinning).
+
+
 ## [1.1.0-beta.1] - 2026-07-30
 
 This releases contains several bugfixes, stability improvements, and new functionalities. Some highlights include:

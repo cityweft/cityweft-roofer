@@ -37,3 +37,26 @@ the quickest path on a Mac:
 docker build --platform linux/arm64 -t roofer-cw:dev -f docker/Dockerfile .
 docker run --rm -v /path/to/data:/data roofer-cw:dev --lod22 /data/tiles /data/footprints.gpkg /data/out
 ```
+
+## Measured (2026-10-26, arm64 Docker builds of this tree)
+
+Raw roofer output, before any of our repairs (`3d-data-processing/tools/roofer_bench.py`), on IGN
+LiDAR HD + BD TOPO: Lyon (2 tiles, 2,845 footprints, ~40 pts/m² in footprints) and Marseille
+(2 tiles, 10,220 footprints). "Ramp" = LoD 2.2 top more than 2 m above roofer's own ceiling
+(max of `h_roof_max`, `h_pc_98p`); "top MAE" = LoD 2.2 top against the point cloud's 98th
+percentile. The control is this build with `--nodata-ceiling-weight 0`.
+
+| | Lyon control | Lyon fork | Marseille control | Marseille fork |
+|---|---|---|---|---|
+| raw ramps | 143 | 81 | 187 | 125 |
+| top MAE (m) | 1.213 | 1.081 | 1.571 | 1.543 |
+| top within 2 m | 86.6 % | 89.1 % | 81.0 % | 81.6 % |
+| top > 3 m under cloud | 4.7 % | 4.7 % | 13.4 % | 13.5 % |
+| bad fits (rmse > 3 m) | 405 | 405 | 1127 | 1127 |
+
+The penalty touches ~1 % of the buildings and only lowers roofs; it never created a ramp.
+A ceiling taken from the heightfield instead of the points removed more ramps (66 / 82) but
+flattened real roofs whose points had formed no plane (Marseille top MAE 1.571 → 1.607), hence
+the point-based ceiling. Upstream's wippolder test set is unchanged by the penalty. PR #181 and
+the other fixes do not change these numbers; they fix determinism, crashes and the LoD 1.x
+sentinel floors.

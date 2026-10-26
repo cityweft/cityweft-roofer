@@ -188,7 +188,12 @@ namespace roofer::reconstruction {
             size_t datasize = height_points.size(), data_cnt = 0;
             if (datasize ==
                 0) {  // polygon was too small to yield any pixels/height_points
-              auto& pz = polygon[0][2];
+              // The polygon vertices carry z = 0; use the face's plane.
+              float pz = polygon[0][2];
+              if (face->data().segid != 0) {
+                pz = roof_height(face->data().plane,
+                                 Point_2(polygon[0][0], polygon[0][1]));
+              }
               face->data().elevation_50p = pz;
               face->data().elevation_70p = pz;
               face->data().elevation_97p = pz;
@@ -282,12 +287,25 @@ namespace roofer::reconstruction {
               }
             }
             if (data_cnt == 0) {
-              auto& pz = polygon[0][2];
-              face->data().elevation_50p = heightfield.noDataVal_;
-              face->data().elevation_70p = heightfield.noDataVal_;
-              face->data().elevation_97p = heightfield.noDataVal_;
-              face->data().elevation_min = heightfield.noDataVal_;
-              face->data().elevation_max = heightfield.noDataVal_;
+              // No measured cell inside this face. The LoD 1.2/1.3 extrusion
+              // reads these percentiles as the face height, so leaving the
+              // nodata sentinel here produced walls and floors at -FLT_MAX.
+              // Evaluate the face's assigned roofplane at an interior point
+              // instead, which is what the LoD 2.2 extrusion does anyway.
+              float pz = heightfield.noDataVal_;
+              if (face->data().segid != 0) {
+                if (auto sample = face_interior_point(face)) {
+                  pz = roof_height(face->data().plane, *sample);
+                } else if (!polygon.empty()) {
+                  pz = roof_height(face->data().plane,
+                                   Point_2(polygon[0][0], polygon[0][1]));
+                }
+              }
+              face->data().elevation_50p = pz;
+              face->data().elevation_70p = pz;
+              face->data().elevation_97p = pz;
+              face->data().elevation_min = pz;
+              face->data().elevation_max = pz;
               face->data().data_coverage = 0;
             } else {
               std::sort(pts.begin(), pts.end(),

@@ -26,6 +26,8 @@
 #include <CGAL/property_map.h>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <roofer/reconstruction/ArrangementBase.hpp>
 #include <roofer/reconstruction/ArrangementOptimiser.hpp>
 #include <vector>
@@ -235,6 +237,26 @@ namespace roofer::reconstruction {
         }
       }
 
+      // The measured roof ceiling. The heightfield holds the detected
+      // roofplanes rasterised over their own alpha shapes, so nothing in the
+      // point cloud supports a roof above its highest cell. A plane that is
+      // extrapolated beyond the ceiling over cells without data (occluded or
+      // unscanned roof halves) is the classic "ramp" artefact: without a
+      // measurement those cells cost nothing under any label, and the label
+      // is decided by the smoothness term alone.
+      const double nodata = heightfield.noDataVal_;
+      const bool use_ceiling = cfg.nodata_ceiling_weight > 0;
+      double ceiling = -std::numeric_limits<double>::infinity();
+      if (use_ceiling) {
+        for (size_t col = 0; col < heightfield.dimx_; ++col) {
+          for (size_t row = 0; row < heightfield.dimy_; ++row) {
+            const auto p = heightfield.getPointFromRasterCoords(col, row);
+            if (p[2] != nodata) ceiling = std::max(ceiling, double(p[2]));
+          }
+        }
+        ceiling += cfg.nodata_ceiling_margin;
+      }
+
       // compute vertex_label_cost (data term)
       // 1 compute for each face the error to each plane
       double max_cost = 0;
@@ -246,11 +268,31 @@ namespace roofer::reconstruction {
         if (face->data().in_footprint) {
           vec2f polygon;
           arrangementface_to_polygon(face, polygon);
-          auto height_points = heightfield.rasterise_polygon(polygon, false);
+          auto cells = heightfield.rasterise_polygon(polygon, true);
+          decltype(cells) height_points, nodata_cells;
+          for (auto& p : cells) {
+            if (p[2] == nodata) {
+              nodata_cells.push_back(p);
+            } else {
+              height_points.push_back(p);
+            }
+          }
 
           for (auto& [plane, plane_id] : points_per_plane) {
             double volume = cfg.data_weight() * cell_area *
                             volume_to_plane(plane, height_points);
+            if (use_ceiling && std::isfinite(ceiling) &&
+                !nodata_cells.empty()) {
+              double excess = 0;
+              for (auto& p : nodata_cells) {
+                const double h = -(plane.a() * p[0] + plane.b() * p[1] +
+                                   plane.d()) /
+                                 plane.c();
+                if (h > ceiling) excess += h - ceiling;
+              }
+              volume += cfg.data_weight() * cfg.nodata_ceiling_weight *
+                        cell_area * excess;
+            }
             face->data().vertex_label_cost.push_back(volume);
             max_cost = std::max(max_cost, volume);
           }

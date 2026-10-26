@@ -42,7 +42,17 @@ namespace roofer::reconstruction {
     "Label ground outside the footprint.", config::no_validation<bool>(), \
     internal)                                                             \
   X(bool, use_ground, true, "Use ground labels (pipeline-derived).",      \
-    config::no_validation<bool>(), internal)
+    config::no_validation<bool>(), internal)                              \
+  X(float, nodata_ceiling_weight, 1.0F,                                   \
+    "Weight of the data-term penalty for a roof plane that would be "     \
+    "extrapolated above the highest measured roof elevation over "        \
+    "roof-partition cells without point data (0 disables).",              \
+    config::at_least(0.0F), public_)                                      \
+  X(float, nodata_ceiling_margin, 1.0F,                                   \
+    "Height above the highest measured roof elevation that a plane may "  \
+    "reach over cells without point data before the ceiling penalty "     \
+    "applies, in metres.",                                                \
+    config::at_least(0.0F), public_)
   struct ArrangementOptimiserConfig {
     using Self = ArrangementOptimiserConfig;
     ROOFER_CONFIG_MEMBERS(ROOFER_ARRANGEMENT_OPTIMISER_FIELDS)

@@ -143,12 +143,12 @@ namespace roofer::misc {
           image_bundle["cnt"].array[lc] = buck.size();
           image_bundle["med"].array[lc] = buck[buck.size() / 2];
           image_bundle["avg"].array[lc] =
-              std::accumulate(buck.begin(), buck.end(), 0) / buck.size();
+              std::accumulate(buck.begin(), buck.end(), 0.0F) / buck.size();
           image_bundle["grp"].array[lc] =
               abs(image_bundle["gp"].array[lc] -
                   image_bundle["ngp"].array[lc]) /
               (image_bundle["gp"].array[lc] + image_bundle["ngp"].array[lc]);
-          int ssum = 0;
+          float ssum = 0;
           for (auto& z : buck) {
             ssum += std::pow(z - image_bundle["avg"].array[lc], 2);
           }

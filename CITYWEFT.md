@@ -1,6 +1,6 @@
 # Cityweft fork of roofer
 
-This is `cityweft/roofer`: upstream [3DBAG/roofer](https://github.com/3DBAG/roofer) `main`
+This is `cityweft/cityweft-roofer`: upstream [3DBAG/roofer](https://github.com/3DBAG/roofer) `main`
 plus the open determinism PR (#181) and our own fixes. Branch `cityweft` is what we build;
 `main` tracks upstream unchanged so rebases stay trivial.
 
@@ -26,7 +26,7 @@ git tag v1.1.0-cw.1 && git push origin cityweft --tags
 ```
 
 The ingest image (`3d-data-processing/docker/userdata.Dockerfile`) downloads
-`https://github.com/cityweft/roofer/releases/download/<tag>/roofer-linux-x86_64-<tag>.tar.gz`.
+`https://github.com/cityweft/cityweft-roofer/releases/download/<tag>/roofer-linux-x86_64-<tag>.tar.gz`.
 
 ## Local build
 

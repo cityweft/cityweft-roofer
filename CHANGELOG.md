@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0-cw.1] - 2026-10-26
 
-Cityweft fork of roofer (https://github.com/cityweft/roofer): upstream `main` at 8fbbaaa (v1.1.0-beta.1 plus the two ArrangementSnapper fixes) with the changes below. Everything here is intended to be proposed upstream.
+Cityweft fork of roofer (https://github.com/cityweft/cityweft-roofer): upstream `main` at 8fbbaaa (v1.1.0-beta.1 plus the two ArrangementSnapper fixes) with the changes below. Everything here is intended to be proposed upstream.
 
 ### Added
 - Graph-cut data term for roof-partition cells without point data. A roof plane extrapolated above the highest measured roof elevation over such cells is now penalised (`[reconstruction.arrangement-optimiser] nodata-ceiling-weight`, default 1, `nodata-ceiling-margin`, default 1 m, and `nodata-ceiling-percentile`, default 0.98, the percentile of the building's point elevations that defines the ceiling, so that a chimney does not lift it and a tall part whose points formed no plane still counts as measured; CLI `--nodata-ceiling-weight`, `--nodata-ceiling-margin`, `--nodata-ceiling-percentile`). Previously those cells cost nothing under every label, the smoothness term alone decided the label, and the plane of the scanned roof half was extrapolated across the unscanned half: the "ramp" roof of 3DBAG/roofer#172. Set the weight to 0 for the old behaviour.

@@ -268,13 +268,52 @@ namespace roofer::reconstruction {
         if (face->data().in_footprint) {
           vec2f polygon;
           arrangementface_to_polygon(face, polygon);
-          auto cells = heightfield.rasterise_polygon(polygon, true);
-          decltype(cells) height_points, nodata_cells;
-          for (auto& p : cells) {
-            if (p[2] == nodata) {
+          // Enumerate the face's cells on a grid aligned with the heightfield
+          // but covering the whole face. The heightfield only spans the
+          // detected roof and ground triangles, and an unscanned roof half can
+          // lie beyond it; cells outside the heightfield are nodata too. The
+          // cell centres coincide with the heightfield's, so the data term is
+          // unchanged.
+          std::vector<RasterTools::Raster::point3d> height_points, nodata_cells;
+          {
+            double bxmin = std::numeric_limits<double>::infinity();
+            double bymin = bxmin, bxmax = -bxmin, bymax = -bxmin;
+            for (auto& p : polygon) {
+              bxmin = std::min(bxmin, double(p[0]));
+              bxmax = std::max(bxmax, double(p[0]));
+              bymin = std::min(bymin, double(p[1]));
+              bymax = std::max(bymax, double(p[1]));
+            }
+            const double cs = heightfield.cellSize_;
+            const double gx0 =
+                heightfield.minx_ +
+                (std::floor((bxmin - heightfield.minx_) / cs) - 1) * cs;
+            const double gy0 =
+                heightfield.miny_ +
+                (std::floor((bymin - heightfield.miny_) / cs) - 1) * cs;
+            const double gx1 =
+                heightfield.minx_ +
+                (std::ceil((bxmax - heightfield.minx_) / cs) + 1) * cs;
+            const double gy1 =
+                heightfield.miny_ +
+                (std::ceil((bymax - heightfield.miny_) / cs) + 1) * cs;
+            RasterTools::Raster face_grid(cs, gx0, gx1, gy0, gy1);
+            face_grid.prefill_arrays(RasterTools::MAX);
+            for (auto p : face_grid.rasterise_polygon(polygon, true)) {
+              if (p[0] >= heightfield.minx_ && p[1] >= heightfield.miny_) {
+                const auto col = size_t((p[0] - heightfield.minx_) / cs);
+                const auto row = size_t((p[1] - heightfield.miny_) / cs);
+                if (col < heightfield.dimx_ && row < heightfield.dimy_) {
+                  const float z =
+                      (*heightfield.vals_)[row * heightfield.dimx_ + col];
+                  if (z != nodata) {
+                    p[2] = z;
+                    height_points.push_back(p);
+                    continue;
+                  }
+                }
+              }
               nodata_cells.push_back(p);
-            } else {
-              height_points.push_back(p);
             }
           }
 

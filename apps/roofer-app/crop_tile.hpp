@@ -210,7 +210,9 @@ bool crop_tile(const roofer::TBox<double>& tile,
       ipc.pt_densities[i] =
           roofer::misc::computePointDensity(ipc.building_rasters[i]);
       ipc.is_glass_roof[i] =
-          roofer::misc::testForGlassRoof(ipc.building_rasters[i]);
+          cfg.glass_roof_threshold > 0 &&
+          roofer::misc::testForGlassRoof(ipc.building_rasters[i],
+                                         cfg.glass_roof_threshold);
       ipc.roof_elevations[i] =
           roofer::misc::computeRoofElevation(ipc.building_rasters[i], 0.7);
 
@@ -241,11 +243,11 @@ bool crop_tile(const roofer::TBox<double>& tile,
                                               footprints[i],
                                               &ipc.nodata_radii[i], &nodata_c);
         } catch (const std::exception& e) {
-          // logger.error(
-          exit(1);
-          //     "Failed to compute_nodata_circle in crop_tile for {}, setting "
-          //     "ipc.nodata_radii[i] = 0, what(): {}",
-          //     ipc.paths, e.what());
+          // One degenerate footprint must not take the whole run down.
+          logger.warning(
+              "Failed to compute the nodata circle for footprint {} in "
+              "pointcloud {}, using radius 0: {}",
+              i, ipc.name, e.what());
           ipc.nodata_radii[i] = 0;
         }
         if (cfg.write_index) {

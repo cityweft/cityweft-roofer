@@ -158,6 +158,10 @@ struct RooferConfig {
   // this are flagged pointcloud-insufficient. Deterministic per-building.
   float min_building_density = 1.0;
   float max_nodata_fraction = 1.0;
+  // Glass-roof test: a building whose cells mix ground and building returns
+  // (mean |ground - building| / (ground + building) over the cells below this
+  // value) is forced to an LoD 1.1 block. 0 disables the test.
+  float glass_roof_threshold = 0.75;
   float terrain_grid_cellsize = 10.0;
   int terrain_grid_search_radius = 3;
   std::string terrain_nodata_mode = "fill_small_gaps";
@@ -352,6 +356,14 @@ struct LegacyReconstructionDestination {
     cfg_.reconstruction.arrangement_optimiser, Optimiser, complexity_factor)   \
   X("clip-terrain", "reconstruction", "clip-terrain", false, false, true,      \
     FIELD, "", cfg_.reconstruction, Reconstruction, clip_terrain)              \
+  X("nodata-ceiling-weight", "reconstruction.arrangement-optimiser",           \
+    "nodata-ceiling-weight", false, false, true, FIELD, "",                    \
+    cfg_.reconstruction.arrangement_optimiser, Optimiser,                      \
+    nodata_ceiling_weight)                                                     \
+  X("nodata-ceiling-margin", "reconstruction.arrangement-optimiser",           \
+    "nodata-ceiling-margin", false, false, true, FIELD, "",                    \
+    cfg_.reconstruction.arrangement_optimiser, Optimiser,                      \
+    nodata_ceiling_margin)                                                     \
   X("lod13-step-height", "reconstruction", "lod13-step-height", true, false,   \
     true, FIELD, "", cfg_.reconstruction, Reconstruction, lod13_step_height)   \
   X("plane-detect-k", "reconstruction.plane-detector",                         \
@@ -567,6 +579,12 @@ struct RooferConfigHandler {
              "Above this threshold, a rootprint's pointcloud is flagged "
              "insufficient.",
              cfg_.max_nodata_fraction, {roofer::config::in_range(0.0F, 1.0F)});
+    crop.add("glass-roof-threshold",
+             "Glass-roof test threshold. A roofprint whose cells mix ground "
+             "and building returns (mean |ground-building|/(ground+building) "
+             "over the cells with points) below this value is reconstructed "
+             "as an LoD 1.1 block. 0 disables the test.",
+             cfg_.glass_roof_threshold, {roofer::config::in_range(0.0F, 1.0F)});
     crop.add("terrain-grid-cellsize",
              "Cellsize used for the crop phase terrain fallback grid, in "
              "metres.",
